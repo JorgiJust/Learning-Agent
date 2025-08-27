@@ -12,7 +12,7 @@ type Values = {
   openEnded: string | number;    
 };
 
-const limits = { subjectMax: 30, referenceMax: 1000, timeMin: 45, timeMax: 240 };
+const limits = { subjectMax: 80, referenceMax: 1000 };
 
 const toInt = (v: any) => Number.isInteger(Number(v)) ? Number(v) : NaN;
 const isPosInt = (v: any) => {
@@ -87,13 +87,7 @@ export function useExamForm() {
     }
 
     if (!isPosInt(values.attempts)) errors.attempts = 'Debe ser entero > 0.';
-    if (!isPosInt(values.timeMinutes)) {
-      errors.timeMinutes = 'Debe ser entero.';
-    } else {
-      const t = toInt(values.timeMinutes);
-      if (t < limits.timeMin) errors.timeMinutes = `Mínimo ${limits.timeMin} minutos.`;
-      else if (t > limits.timeMax) errors.timeMinutes = `Máximo ${limits.timeMax} minutos (4 horas).`;
-    }
+    if (!isPosInt(values.timeMinutes)) errors.timeMinutes = 'Debe ser entero > 0.';
 
     ([
       ['multipleChoice','Opción múltiple'],
@@ -137,16 +131,7 @@ export function useExamForm() {
       return;
     }
     if (name === 'timeMinutes') {
-      const n = toInt(value);
-      if (!Number.isInteger(n)) {
-        errors.timeMinutes = 'Debe ser entero.';
-      } else if (n < limits.timeMin) {
-        errors.timeMinutes = `Mínimo ${limits.timeMin} minutos.`;
-      } else if (n > limits.timeMax) {
-        errors.timeMinutes = `Máximo ${limits.timeMax} minutos (4 horas).`;
-      } else {
-        delete errors.timeMinutes;
-      }
+      if (!isPosInt(value)) errors.timeMinutes = 'Debe ser entero > 0.'; else delete errors.timeMinutes;
       return;
     }
     if (['multipleChoice','trueFalse','analysis','openEnded'].includes(name as string)) {
