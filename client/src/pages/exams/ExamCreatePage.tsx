@@ -88,6 +88,7 @@ import { readJSON } from '../../services/storage/localStorage';
 import { generateQuestions } from '../../services/exams.service';
 import PageTemplate from '../../components/PageTemplate';
 
+
 export default function ExamsCreatePage() {
   const { toasts, pushToast, removeToast } = useToast();
   const formRef = useRef<{ getSnapshot: () => any } | null>(null);
@@ -160,22 +161,12 @@ export default function ExamsCreatePage() {
   };
 
   return (
-    <PageTemplate
-      title="Exámenes"
-      subtitle="Creador de exámenes"
-      user={{
-        name: "Nora Watson",
-        role: "Sales Manager",
-        avatarUrl: "https://i.pravatar.cc/128?img=5",
-      }}
-      actions={
-        <div className="flex gap-2">
+    <div>
+      <header className="toolbar">
+        <h1>Exámenes</h1>
+        <div className="actions">
           <button className="btn btn-secondary" data-action="add">Añadir</button>
-          <button
-            className="btn btn-primary"
-            data-action="ai"
-            onClick={() => setAiOpen(true)}
-          >
+          <button className="btn btn-primary" data-action="ai" onClick={() => setAiOpen(true)}>
             Generar examen IA uwu
           </button>
         </div>
@@ -213,11 +204,11 @@ export default function ExamsCreatePage() {
             <div className="ai-results" dangerouslySetInnerHTML={{ __html: aiHtml }} />
           </section>
         )}
+      </main>
 
-        {toasts.map(t => (
-          <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />
-        ))}
-      </div>
-    </PageTemplate>
+      {toasts.map(t => (
+        <Toast key={t.id} {...t} onClose={() => removeToast(t.id)} />
+      ))}
+    </div>
   );
 }
