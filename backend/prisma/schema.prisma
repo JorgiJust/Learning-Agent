@@ -96,7 +96,7 @@ model TeacherProfile {
   academicUnit String?  // departamento/escuela
 
   // relation 1:N
-  classes      Classes[]
+  courses      Course[]
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -315,12 +315,59 @@ model Exam {
   openExerciseCount Int   @default(0) // abiertas: ejercicio
 
   createdAt      DateTime @default(now())
+
+  questions ExamQuestion[]
+
   @@index([subject])
+}
+
+// === Preguntas de Examen ===
+enum QuestionKind {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  OPEN_ANALYSIS
+  OPEN_EXERCISE
+}
+
+model ExamQuestion {
+  id                 String       @id @default(cuid())
+  examId             String
+  exam               Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  kind               QuestionKind
+  text               String
+
+  // Campos específicos por tipo
+  options            Json?        // MCQ
+  correctOptionIndex Int?         // MCQ
+  correctBoolean     Boolean?     // TRUE_FALSE
+  expectedAnswer     String?      // OPEN_*
+
+  order              Int
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@unique([examId, order])       // no dos preguntas con el mismo orden en un examen
+  @@index([examId, order])
 }
 
 /* ===========================
    Academic Management (classes and enrollment)
    =========================== */
+
+model Course {
+  id            String            @id @default(uuid())
+  name          String
+  isActive      Boolean           @default(true)
+
+  teacherId     String
+  teacher       TeacherProfile    @relation(fields: [teacherId], references: [userId])
+  classes       Classes[]
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
 
 model Classes {
   id            String            @id @default(uuid())
@@ -333,8 +380,11 @@ model Classes {
   // relation 1:N
   enrollment    Enrollment[]
 
-  teacherId     String
-  teacher       TeacherProfile    @relation(fields: [teacherId], references: [userId])
+  courseId      String            
+  course        Course            @relation(fields: [courseId], references: [id])
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt @default(now())
 }
 
 // relation N:N - StudentProfile-Classes
