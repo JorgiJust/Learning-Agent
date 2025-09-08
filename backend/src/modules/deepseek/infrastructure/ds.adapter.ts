@@ -229,7 +229,7 @@ export class DsAdapter implements DeepseekPort {
   }
   async generateMultOptionTest(
     topico: string,
-  ): Promise<MultipleSelectionTestResponse> {
+  ): Promise<MultipleSelectionResponse> {
     try {
       const vars: Record<string, string> = {
         topico: topico,
@@ -263,7 +263,7 @@ export class DsAdapter implements DeepseekPort {
       }
       const response = JSON.parse(
         responseContent,
-      ) as MultipleSelectionTestResponse;
+      ) as MultipleSelectionResponse;
       return response;
     } catch (error) {
       console.error('OpenAI Error in generateMultipleTestSelection:', error);

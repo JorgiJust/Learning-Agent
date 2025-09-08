@@ -21,5 +21,5 @@ export interface DeepseekPort {
 
   generateMultOptionTest(
     topico: string,
-  ): Promise<MultipleSelectionTestResponse>;
+  ): Promise<MultipleSelectionResponse>;
 }
