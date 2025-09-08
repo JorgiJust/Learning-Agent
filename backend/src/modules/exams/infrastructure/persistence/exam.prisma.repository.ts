@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../../core/prisma/prisma.service';
 import { ExamRepositoryPort } from '../../domain/ports/exam.repository.port';
 import { Exam } from '../../domain/entities/exam.entity';
@@ -9,8 +9,10 @@ import { DistributionVO } from '../../domain/entities/distribution.vo';
 @Injectable()
 export class ExamPrismaRepository implements ExamRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ExamPrismaRepository.name);
 
   async create(exam: Exam): Promise<Exam> {
+    this.logger.log(`create -> id=${exam.id}, subject=${exam.subject}, total=${exam.totalQuestions.getValue()}`);
     const row = await this.prisma.exam.create({
       data: {
         id: exam.id,
@@ -27,8 +29,10 @@ export class ExamPrismaRepository implements ExamRepositoryPort {
         openExerciseCount: exam.distribution?.value.open_exercise ?? 0,
 
         createdAt: exam.createdAt,
+        approvedAt: exam.approvedAt ?? null,
       },
     });
+    this.logger.log(`create <- prisma created id=${row.id}`);
 
     const sum =
       row.mcqCount +
@@ -59,6 +63,8 @@ export class ExamPrismaRepository implements ExamRepositoryPort {
       row.reference ?? null,
       distVO,     
       row.createdAt,
+      row.updatedAt,
+      row.approvedAt ?? undefined,
     );
   }
 
@@ -95,6 +101,21 @@ export class ExamPrismaRepository implements ExamRepositoryPort {
       row.reference ?? null,
       distVO,
       row.createdAt,
+      row.updatedAt,
+      row.approvedAt ?? undefined, 
     );
   }
+
+  async approve(id: string): Promise<void> {
+    this.logger.log(`approve -> id=${id}`);
+    const row = await this.prisma.exam.findUnique({ where: { id } });
+    if (!row) throw new Error('Exam not found');
+    if (row.approvedAt) throw new Error('Exam already approved');
+    await this.prisma.exam.update({
+      where: { id },
+      data: { approvedAt: new Date() },
+    });
+    this.logger.log(`approve <- id=${id}`);
+  }
+
 }

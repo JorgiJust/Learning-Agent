@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../core/prisma/prisma.module';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { AiConfigService } from '../../core/ai/ai.config';
+import { IdentityModule } from '../identity/identity.module';
 import {
   FILE_STORAGE_REPO,
   DOCUMENT_REPOSITORY_PORT,
@@ -44,13 +45,19 @@ import { ProcessDocumentTextUseCase } from './application/commands/process-docum
 import { ProcessDocumentChunksUseCase } from './application/commands/process-document-chunks.usecase';
 import { GenerateDocumentEmbeddingsUseCase } from './application/use-cases/generate-document-embeddings.use-case';
 import { SearchDocumentsUseCase } from './application/use-cases/search-documents.use-case';
-
+import { NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { AuthMiddleware } from './infrastructure/http/middleware/auth.middleware';
+import { LoggingMiddleware } from './infrastructure/http/middleware/logging.middleware';
+import { ContextualLoggerService } from './infrastructure/services/contextual-logger.service';
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, IdentityModule],
   controllers: [DocumentsController, EmbeddingsController],
   providers: [
     // Servicios de configuración
     AiConfigService,
+
+    // Servicios de logging
+    ContextualLoggerService,
 
     // Infrastructure adapters
     { provide: DOCUMENT_STORAGE_PORT, useClass: S3StorageAdapter },
@@ -121,17 +128,23 @@ import { SearchDocumentsUseCase } from './application/use-cases/search-documents
     // Use cases
     {
       provide: ListDocumentsUseCase,
-      useFactory: (storageAdapter: S3StorageAdapter) => {
-        return new ListDocumentsUseCase(storageAdapter);
+      useFactory: (
+        storageAdapter: S3StorageAdapter,
+        documentRepository: PrismaDocumentRepositoryAdapter,
+      ) => {
+        return new ListDocumentsUseCase(storageAdapter, documentRepository);
       },
-      inject: [FILE_STORAGE_REPO],
+      inject: [DOCUMENT_STORAGE_PORT, DOCUMENT_REPOSITORY_PORT],
     },
     {
       provide: DeleteDocumentUseCase,
-      useFactory: (storageAdapter: S3StorageAdapter) => {
-        return new DeleteDocumentUseCase(storageAdapter);
+      useFactory: (
+        storageAdapter: S3StorageAdapter,
+        documentRepository: PrismaDocumentRepositoryAdapter,
+      ) => {
+        return new DeleteDocumentUseCase(storageAdapter, documentRepository);
       },
-      inject: [FILE_STORAGE_REPO],
+      inject: [DOCUMENT_STORAGE_PORT, DOCUMENT_REPOSITORY_PORT],
     },
     {
       provide: UploadDocumentUseCase,
@@ -145,10 +158,13 @@ import { SearchDocumentsUseCase } from './application/use-cases/search-documents
     },
     {
       provide: DownloadDocumentUseCase,
-      useFactory: (storageAdapter: S3StorageAdapter) => {
-        return new DownloadDocumentUseCase(storageAdapter);
+      useFactory: (
+        storageAdapter: S3StorageAdapter,
+        documentRepository: PrismaDocumentRepositoryAdapter,
+      ) => {
+        return new DownloadDocumentUseCase(storageAdapter, documentRepository);
       },
-      inject: [FILE_STORAGE_REPO],
+      inject: [DOCUMENT_STORAGE_PORT, DOCUMENT_REPOSITORY_PORT],
     },
     {
       provide: ProcessDocumentTextUseCase,
@@ -224,4 +240,14 @@ import { SearchDocumentsUseCase } from './application/use-cases/search-documents
     VECTOR_SEARCH_PORT,
   ],
 })
-export class DocumentsModule {}
+export class DocumentsModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(LoggingMiddleware)
+      .forRoutes('api/documents', 'api/repository-documents/embeddings');
+
+    consumer
+      .apply(AuthMiddleware)
+      .forRoutes({ path: 'api/documents/upload', method: RequestMethod.POST });
+  }
+}
