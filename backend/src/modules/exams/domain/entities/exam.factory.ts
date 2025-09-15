@@ -24,6 +24,9 @@ export class ExamFactory {
     if (reference && /[<>]/.test(reference)) {
       throw new DomainError('Referencia contiene caracteres no permitidos.');
     }
+    if (props.timeMinutes < 45 || props.timeMinutes > 240) {
+      throw new DomainError('Tiempo (minutos) debe estar entre 45 y 240.');
+    } 
 
     const difficulty = Difficulty.create(props.difficulty);
     const attempts = PositiveInt.create('Intentos', props.attempts);
@@ -48,7 +51,9 @@ export class ExamFactory {
       time,
       reference ?? null,
       distributionVO,      
-      new Date(),            
+      new Date(),
+      new Date(),  
+      undefined,            
     );
   }
 }

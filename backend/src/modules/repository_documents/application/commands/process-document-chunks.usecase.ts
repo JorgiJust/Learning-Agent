@@ -80,7 +80,36 @@ export class ProcessDocumentChunksUseCase {
         );
       }
 
-      // 4. Procesar chunks usando el servicio de dominio
+      // 4. Verificar si ya existen chunks (si no se va a reemplazar)
+      if (!replaceExisting) {
+        const canCheckExisting =
+          typeof (this.chunkingService as any).getDocumentChunks === 'function';
+        if (canCheckExisting) {
+          const existingChunks = await (
+            this.chunkingService as any
+          ).getDocumentChunks(documentId);
+          if (existingChunks.total > 0) {
+            this.logger.log(
+              `Documento ${documentId} ya tiene ${existingChunks.total} chunks existentes. Saltando procesamiento.`,
+            );
+            return {
+              status: 'success',
+              savedChunks: existingChunks.chunks,
+              chunkingResult: {
+                chunks: existingChunks.chunks,
+                totalChunks: existingChunks.total,
+                statistics: {
+                  ...existingChunks.statistics,
+                  actualOverlapPercentage: 0, // No se puede calcular para chunks existentes
+                },
+              },
+              processingTimeMs: 0,
+            };
+          }
+        }
+      }
+
+      // 5. Procesar chunks usando el servicio de dominio
       const result = await this.chunkingService.processDocumentChunks(
         documentId,
         document.extractedText,
@@ -91,7 +120,7 @@ export class ProcessDocumentChunksUseCase {
         },
       );
 
-      // 5. Log del resultado
+      // 6. Log del resultado
       if (result.status === 'success') {
         this.logger.log(
           `✅ Chunks procesados exitosamente para documento ${documentId}: ` +
