@@ -12,7 +12,7 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.useGlobalFilters(new DomainErrorFilter()); // Handle DomainError globally,(en el futuro el dominio lanza DomainErrors)
+  app.useGlobalFilters(new DomainErrorFilter()); 
 
   app.enableShutdownHooks();
 

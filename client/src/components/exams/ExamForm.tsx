@@ -8,24 +8,71 @@ import type { ToastKind } from '../shared/Toast';
 type Props = {
   onToast: (msg: string, type?: ToastKind) => void;
   onGenerateAI?: () => void | Promise<void>;
+  initialData?: {
+    id?: string;
+    title?: string;
+    subject?: string;
+    difficulty?: string;
+    attempts?: string;
+    timeMinutes?: number;
+    reference?: string;
+    questions?: Array<{
+      type: 'multiple_choice' | 'true_false' | 'open_analysis' | 'open_exercise';
+      text: string;
+      options?: string[];
+      correctOptionIndex?: number;
+      correctBoolean?: boolean;
+      expectedAnswer?: string;
+    }>;
+  };
 };
 
 export type ExamFormHandle = { getSnapshot: () => any };
 
 export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
-  { onToast, onGenerateAI },
+  { onToast, onGenerateAI, initialData },
   ref
 ) {
   const { setValue, validate, getSnapshot, values: hookValues, getTotalQuestions } = useExamForm();
   const { token } = theme.useToken();
 
-  const [values, setValues] = useState({
-    ...hookValues,
-    multipleChoice: '',
-    trueFalse: '',
-    analysis: '',
-    openEnded: '',
-    timeMinutes: 45,
+  const [values, setValues] = useState(() => {
+    if (initialData) {
+      const mcCount = initialData.questions?.filter(q => q.type === 'multiple_choice').length || 0;
+      const tfCount = initialData.questions?.filter(q => q.type === 'true_false').length || 0;
+      const anCount = initialData.questions?.filter(q => q.type === 'open_analysis').length || 0;
+      const oeCount = initialData.questions?.filter(q => q.type === 'open_exercise').length || 0;
+
+      setValue('subject', initialData.subject || '');
+      setValue('difficulty', initialData.difficulty || 'medio');
+      setValue('attempts', initialData.attempts || '1');
+      setValue('multipleChoice', String(mcCount));
+      setValue('trueFalse', String(tfCount));
+      setValue('analysis', String(anCount));
+      setValue('openEnded', String(oeCount));
+      setValue('timeMinutes', '45');
+
+      return {
+        ...hookValues,
+        subject: initialData.subject || '',
+        difficulty: initialData.difficulty || 'medio',
+        attempts: initialData.attempts || '1',
+        multipleChoice: String(mcCount),
+        trueFalse: String(tfCount),
+        analysis: String(anCount),
+        openEnded: String(oeCount),
+        timeMinutes: 45,
+      };
+    }
+
+    return {
+      ...hookValues,
+      multipleChoice: '',
+      trueFalse: '',
+      analysis: '',
+      openEnded: '',
+      timeMinutes: 45,
+    };
   });
   
 
@@ -75,7 +122,17 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
   }, []);
 
   const onChange = (name: string, value: string) => {
-    const v = name === 'subject' ? value.replace(/\s+/g, ' ').trimStart() : value;
+    let v = name === 'subject' ? value.replace(/\s+/g, ' ').trimStart() : value;
+    
+    if (['multipleChoice', 'trueFalse', 'analysis', 'openEnded'].includes(name)) {
+      if (value === '' || !/^\d+$/.test(value)) {
+        v = '';
+      } else {
+        const num = parseInt(value);
+        v = num.toString();
+      }
+    }
+    
     setValues((prev) => ({ ...prev, [name]: v }));
     setValue(name as any, v);
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -236,7 +293,7 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
             <>
               <div className="form-group sm:col-span-2">
                 <label htmlFor="subject" className="block text-sm font-medium mb-1">
-                  Materia
+                  Titulo del examen
                 </label>
                 <input
                   id="subject"
@@ -250,7 +307,7 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                     outline-none transition
                     focus:ring-2
                   "
-                  placeholder="Ej: Algorítmica 1"
+                  placeholder="Ej: 1er parcial"
                   value={values.subject || ''}
                   onChange={(e) => onChange('subject', e.target.value)}
                   autoComplete="off"
@@ -440,9 +497,9 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                   <input
                     id="multipleChoice"
                     name="multipleChoice"
-                    type="number"
-                    min={0}
-                    step={1}
+                    type="text"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
                     placeholder="0"
                     className="
                       input-hover w-full rounded-lg border-2 px-1 py-1
@@ -451,6 +508,20 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                     "
                     value={values.multipleChoice || ''}
                     onChange={(e) => onChange('multipleChoice', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (![
+                        'Backspace',
+                        'Delete',
+                        'ArrowLeft',
+                        'ArrowRight',
+                        'Tab',
+                        'Home',
+                        'End',
+                        ...[...Array(10)].map((_, i) => i.toString())
+                      ].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     style={{
                       background: token.colorBgContainer,
                       color: token.colorText,
@@ -470,9 +541,9 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                   <input
                     id="trueFalse"
                     name="trueFalse"
-                    type="number"
-                    min={0}
-                    step={1}
+                    type="text"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
                     placeholder="0"
                     className="
                       input-hover w-full rounded-lg border-2 px-3 py-2
@@ -481,6 +552,20 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                     "
                     value={values.trueFalse || ''}
                     onChange={(e) => onChange('trueFalse', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (![
+                        'Backspace',
+                        'Delete',
+                        'ArrowLeft',
+                        'ArrowRight',
+                        'Tab',
+                        'Home',
+                        'End',
+                        ...[...Array(10)].map((_, i) => i.toString())
+                      ].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     style={{
                       background: token.colorBgContainer,
                       color: token.colorText,
@@ -500,9 +585,9 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                   <input
                     id="analysis"
                     name="analysis"
-                    type="number"
-                    min={0}
-                    step={1}
+                    type="text"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
                     placeholder="0"
                     className="
                       input-hover w-full rounded-lg border-2 px-3 py-2
@@ -511,6 +596,20 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                     "
                     value={values.analysis || ''}
                     onChange={(e) => onChange('analysis', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (![
+                        'Backspace',
+                        'Delete',
+                        'ArrowLeft',
+                        'ArrowRight',
+                        'Tab',
+                        'Home',
+                        'End',
+                        ...[...Array(10)].map((_, i) => i.toString())
+                      ].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     style={{
                       background: token.colorBgContainer,
                       color: token.colorText,
@@ -530,9 +629,9 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                   <input
                     id="openEnded"
                     name="openEnded"
-                    type="number"
-                    min={0}
-                    step={1}
+                    type="text"
+                    pattern="[0-9]*"
+                    inputMode="numeric"
                     placeholder="0"
                     className="
                       input-hover w-full rounded-lg border-2 px-3 py-2
@@ -541,6 +640,20 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
                     "
                     value={values.openEnded || ''}
                     onChange={(e) => onChange('openEnded', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (![
+                        'Backspace',
+                        'Delete',
+                        'ArrowLeft',
+                        'ArrowRight',
+                        'Tab',
+                        'Home',
+                        'End',
+                        ...[...Array(10)].map((_, i) => i.toString())
+                      ].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     style={{
                       background: token.colorBgContainer,
                       color: token.colorText,
@@ -663,13 +776,9 @@ export const ExamForm = forwardRef<ExamFormHandle, Props>(function ExamForm(
           {step === 2 && onGenerateAI && (
             <Button
             type="primary"
-            disabled={sending || !validStep()}
-            onClick={() => {
-              if (validStep()) {
-                onGenerateAI?.();
-              }
-             }}
-             >
+            disabled={sending}
+            onClick={onGenerateAI}
+            >
               Generar preguntas con IA
               </Button>
             )}
